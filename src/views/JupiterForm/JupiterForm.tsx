@@ -1,6 +1,7 @@
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import Image from "next/image";
 
 import { INPUT_MINT_ADDRESS, OUTPUT_MINT_ADDRESS } from "../../constants";
 
@@ -22,7 +23,7 @@ const JupiterForm: FunctionComponent<IJupiterFormProps> = (props) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValue, setFormValue] = useState<IState>({
-    amount: 1 * 10 ** 6, // unit in lamports (Decimals)
+    amount: 1, // unit in lamports (Decimals)
     inputMint: new PublicKey(INPUT_MINT_ADDRESS),
     outputMint: new PublicKey(OUTPUT_MINT_ADDRESS),
     slippage: 1, // 0.1%
@@ -47,7 +48,7 @@ const JupiterForm: FunctionComponent<IJupiterFormProps> = (props) => {
     setIsLoading(true);
     api
       .v1QuoteGet({
-        amount: formValue.amount,
+        amount: formValue.amount * 10 ** 6,
         inputMint: formValue.inputMint.toBase58(),
         outputMint: formValue.outputMint.toBase58(),
         slippage: formValue.slippage,
@@ -89,12 +90,41 @@ const JupiterForm: FunctionComponent<IJupiterFormProps> = (props) => {
   }, [formValue.inputMint?.toBase58(), formValue.outputMint?.toBase58()]);
 
   if (!loaded) {
-    return <div>Loading jupiter routeMap...</div>;
+    return <div>Loading..</div>;
   }
 
   return (
-    <div className="max-w-full md:max-w-lg">
-      <div className="mb-2">
+    <div className="max-w-full md:max-w-lg toast">
+      <h1 className="mb-5 text-xl font-bold title">
+                            krk.finance | Zero-Fee Swap !
+      </h1>
+      <div className="panel-container">
+      <div className="panel">
+        <label htmlFor="amount" className="block text-sm font-medium">
+          input ({inputTokenInfo?.symbol.toLowerCase()})
+        </label>
+        <div className="mt-1">
+          <input
+            name="amount"
+            id="amount"
+            className="text-center shadow-sm bg-neutral p-2 focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+            value={formValue.amount}
+            type="text"
+            pattern="[0-9]*"
+            onInput={(e: any) => {
+              let newValue = Number(e.target?.value || 0);
+              newValue = Number.isNaN(newValue) ? 0 : newValue;
+              setFormValue((val) => ({
+                ...val,
+                amount: Math.max(newValue, 0),
+              }));
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="inputContainer">
         <label htmlFor="inputMint" className="block text-sm font-medium">
           Input token
         </label>
@@ -121,10 +151,36 @@ const JupiterForm: FunctionComponent<IJupiterFormProps> = (props) => {
             );
           })}
         </select>
+        </div>
+        
+      </div>
       </div>
 
+      
+      <div className="panel-container">
+      <div className="panel">
+      {routes?.[0] &&
+        (() => {
+          const route = routes[0];
+          if (route) {
+            return (
+              <div>
+                <div className="block text-sm font-medium text-center">
+                  output:{" "}
+                  <div className="shadow-sm bg-neutral p-2 focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                  {(route.outAmount || 0) /
+                    10 ** (outputTokenInfo?.decimals || 1)}{" "}
+                  {outputTokenInfo?.symbol}
+                  </div>
+                </div>                
+              </div>
+            );
+          }
+        })()}
+      </div>
+      <div className="panel">
       <div className="mb-2">
-        <label htmlFor="outputMint" className="block text-sm font-medium">
+        <label htmlFor="outputMint" className="block text-sm font-medium text-center">
           Output token
         </label>
         <select
@@ -151,36 +207,14 @@ const JupiterForm: FunctionComponent<IJupiterFormProps> = (props) => {
           })}
         </select>
       </div>
-
-      <div>
-        <label htmlFor="amount" className="block text-sm font-medium">
-          Input Amount ({inputTokenInfo?.symbol})
-        </label>
-        <div className="mt-1">
-          <input
-            name="amount"
-            id="amount"
-            className="shadow-sm bg-neutral p-2 focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-            value={formValue.amount}
-            type="text"
-            pattern="[0-9]*"
-            onInput={(e: any) => {
-              let newValue = Number(e.target?.value || 0);
-              newValue = Number.isNaN(newValue) ? 0 : newValue;
-              setFormValue((val) => ({
-                ...val,
-                amount: Math.max(newValue, 0),
-              }));
-            }}
-          />
-        </div>
+      </div>
       </div>
 
       <div className="flex justify-center">
         <button
           className={`${
             isLoading ? "opacity-50 cursor-not-allowed" : ""
-          } inline-flex items-center px-4 py-2 mt-4 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+          } inline-flex items-center px-4 py-2 mt-4 border border-transparent text-base font-medium rounded-md shadow-sm text-white btn focus:outline-none focus:ring-2 focus:ring-offset-2`}
           type="button"
           onClick={fetchRoute}
           disabled={isLoading}
@@ -190,11 +224,14 @@ const JupiterForm: FunctionComponent<IJupiterFormProps> = (props) => {
               className={`${styles.loader} mr-4 ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24`}
             ></div>
           )}
-          Refresh rate
+          <div>
+          refresh
+          </div>
+          
         </button>
       </div>
 
-      <div>Total routes: {routes?.length}</div>
+      <div>routes: {routes?.length}</div>
 
       {routes?.[0] &&
         (() => {
@@ -203,14 +240,8 @@ const JupiterForm: FunctionComponent<IJupiterFormProps> = (props) => {
             return (
               <div>
                 <div>
-                  Best route info :{" "}
+                  best route :{" "}
                   {route.marketInfos?.map((info) => info.label)}
-                </div>
-                <div>
-                  Output:{" "}
-                  {(route.outAmount || 0) /
-                    10 ** (outputTokenInfo?.decimals || 1)}{" "}
-                  {outputTokenInfo?.symbol}
                 </div>
               </div>
             );
@@ -269,11 +300,12 @@ const JupiterForm: FunctionComponent<IJupiterFormProps> = (props) => {
             }
             setIsSubmitting(false);
           }}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white btn focus:outline-none focus:ring-2 focus:ring-offset-2"
         >
-          {isSubmitting ? "Swapping.." : "Swap Best Route"}
+          {isSubmitting ? "Swapping.." : "Swap"}
         </button>
       </div>
+      <p className="mt-1 text-sm font-bold">Powered by Jup.ag</p>
     </div>
   );
 };
